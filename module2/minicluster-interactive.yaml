@@ -1,0 +1,41 @@
+apiVersion: flux-framework.org/v1alpha2
+kind: MiniCluster
+metadata:
+  name: flux-sample
+spec:
+  # Without pod limits and resources, these can run multiple per physical nodes
+  # The size is the number of nodes, and tasks here is proc per node * nodes
+  # TODO change to number we have in the tutorial
+  size: 1
+  tasks: 96
+  
+  # The only difference / addition to this file is adding interactive: true
+  interactive: true
+  logging:
+    quiet: true
+
+  # This container is built for AWS EFA with libfabric
+  containers:
+   - image: ghcr.io/converged-computing/metric-lammps-cpu:libfabric-zen4-reax
+
+     # You can set the working directory if your container WORKDIR is not correct.
+     workingDir: /opt/lammps/examples/reaxff/HNS
+     command: lmp -v x 2 -v y 2 -v z 2 -in in.reaxc.hns -nocite
+     
+     # Custom environment variables, this is for libfabric / efa.
+     environment:
+        FI_PROVIDER: "efa"
+        FI_EFA_FORK_SAFE: "1"
+
+     # This is more expert optimization to ensure /dev/shm does not limit efa
+     volumes:
+        shared-memory:
+          emptyDir: true
+          emptyDirMedium: "memory"
+
+     # Ensure we get a single EFA device
+     resources:
+       limits:
+         vpc.amazonaws.com/efa: 1
+       requests:
+         vpc.amazonaws.com/efa: 1

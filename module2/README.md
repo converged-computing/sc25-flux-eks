@@ -6,13 +6,13 @@ Create the eksctl cluster. Note that this takes about 20 minutes.
 
 ```bash
 eksctl create cluster --config-file ./eks-config.yaml
-aws eks update-kubeconfig --region us-east-2 --name lammps-cluster
+aws eks update-kubeconfig --region us-east-1 --name lammps-cluster
 ```
 
-When the cluster is created, install the Flux Operator.
+When the cluster is created, install the Flux Operator. Note that this is an ARM build since we are running on an AWS Graviton (ARM) processor.
 
 ```bash
-kubectl apply -f https://raw.githubusercontent.com/flux-framework/flux-operator/refs/heads/main/examples/dist/flux-operator.yaml
+kubectl apply -f https://raw.githubusercontent.com/flux-framework/flux-operator/refs/heads/main/examples/dist/flux-operator-arm.yaml
 ```
 
 It is easier to have auto-completion for kubectl.
@@ -52,44 +52,48 @@ kubectl logs flux-sample-0-dl4dm -f
 Defaulted container "flux-sample" out of: flux-sample, flux-view (init)
 ```
 
+Questions for Evan:
+
+ - which envars are not needed?
+
 <details>
 
 <summary> LAMMPS output </summary>
 
 ```console
-LAMMPS (29 Sep 2021 - Update 2)
+LAMMPS (17 Apr 2024 - Development - a8687b5372)
 OMP_NUM_THREADS environment is not set. Defaulting to 1 thread. (src/comm.cpp:98)
   using 1 OpenMP thread(s) per MPI task
 Reading data file ...
-  triclinic box = (0.0000000 0.0000000 0.0000000) to (22.326000 11.141200 13.778966) with tilt (0.0000000 -5.0260300 0.0000000)
-  2 by 1 by 1 MPI processor grid
+  triclinic box = (0 0 0) to (22.326 11.1412 13.778966) with tilt (0 -5.02603 0)
+  8 by 4 by 4 MPI processor grid
   reading atoms ...
   304 atoms
   reading velocities ...
   304 velocities
-  read_data CPU = 0.001 seconds
-Replicating atoms ...
-  triclinic box = (0.0000000 0.0000000 0.0000000) to (44.652000 22.282400 27.557932) with tilt (0.0000000 -10.052060 0.0000000)
-  2 by 1 by 1 MPI processor grid
+  read_data CPU = 0.075 seconds
+Replication is creating a 8x8x8 = 512 times larger system...
+  triclinic box = (0 0 0) to (178.608 89.1296 110.23173) with tilt (0 -40.20824 0)
+  8 by 4 by 4 MPI processor grid
   bounding box image = (0 -1 -1) to (0 1 1)
   bounding box extra memory = 0.03 MB
-  average # of replicas added to proc = 5.00 out of 8 (62.50%)
-  2432 atoms
-  replicate CPU = 0.000 seconds
+  average # of replicas added to proc = 18.46 out of 512 (3.61%)
+  155648 atoms
+  replicate CPU = 0.010 seconds
 Neighbor list info ...
-  update every 20 steps, delay 0 steps, check no
+  update: every = 20 steps, delay = 0 steps, check = no
   max neighbors/atom: 2000, page size: 100000
   master list distance cutoff = 11
   ghost atom cutoff = 11
-  binsize = 5.5, bins = 10 5 6
+  binsize = 5.5, bins = 40 17 21
   2 neighbor lists, perpetual/occasional/extra = 2 0 0
-  (1) pair reax/c, perpetual
+  (1) pair reaxff, perpetual
       attributes: half, newton off, ghost
-      pair build: half/bin/newtoff/ghost
+      pair build: half/bin/ghost/newtoff
       stencil: full/ghost/bin/3d
       bin: standard
   (2) fix qeq/reax, perpetual, copy from (1)
-      attributes: half, newton off, ghost
+      attributes: half, newton off
       pair build: copy
       stencil: none
       bin: none
@@ -98,45 +102,45 @@ Setting up Verlet run ...
   Current step  : 0
   Time step     : 0.1
 Per MPI rank memory allocation (min/avg/max) = 143.9 | 143.9 | 143.9 Mbytes
-Step Temp PotEng Press E_vdwl E_coul Volume 
-       0          300   -113.27833    437.52118   -111.57687   -1.7014647    27418.867 
-      10    299.38517   -113.27631    1439.2824   -111.57492   -1.7013813    27418.867 
-      20    300.27107   -113.27884     3764.342   -111.57762   -1.7012247    27418.867 
-      30    302.21063   -113.28428    7007.6629   -111.58335   -1.7009363    27418.867 
-      40    303.52265   -113.28799    9844.8245   -111.58747   -1.7005186    27418.867 
-      50    301.87059   -113.28324    9663.0973   -111.58318   -1.7000523    27418.867 
-      60    296.67807   -113.26777    7273.8119   -111.56815   -1.6996137    27418.867 
-      70    292.19999   -113.25435    5533.5522   -111.55514   -1.6992158    27418.867 
-      80    293.58677   -113.25831    5993.4438   -111.55946   -1.6988533    27418.867 
-      90    300.62635   -113.27925    7202.8369   -111.58069   -1.6985592    27418.867 
-     100    305.38276   -113.29357    10085.805   -111.59518   -1.6983874    27418.867 
-Loop time of 8.98892 on 2 procs for 100 steps with 2432 atoms
+   Step          Temp          PotEng         Press          E_vdwl         E_coul         Volume    
+         0   300           -113.27833      438.99595     -111.57687     -1.7014647      1754807.5    
+        10   300.88261     -113.2808       1018.2986     -111.5794      -1.7014015      1754807.5    
+        20   302.3388      -113.28501      1897.0286     -111.58375     -1.7012621      1754807.5    
+        30   302.11018     -113.28419      4220.8936     -111.58318     -1.7010124      1754807.5    
+        40   299.82789     -113.27728      6263.6197     -111.57661     -1.7006693      1754807.5    
+        50   296.69384     -113.2679       6399.8054     -111.56761     -1.7002908      1754807.5    
+        60   294.39704     -113.26102      6164.4726     -111.56111     -1.6999131      1754807.5    
+        70   294.64264     -113.26172      6839.9294     -111.56219     -1.699534       1754807.5    
+        80   297.83962     -113.27122      8089.2834     -111.57207     -1.6991567      1754807.5    
+        90   301.61126     -113.28247      9266.8765     -111.58365     -1.6988216      1754807.5    
+       100   302.44604     -113.2849       10317.601     -111.58632     -1.6985828      1754807.5    
+Loop time of 16.9415 on 128 procs for 100 steps with 155648 atoms
 
-Performance: 0.096 ns/day, 249.692 hours/ns, 11.125 timesteps/s
-100.0% CPU use with 2 MPI tasks x 1 OpenMP threads
+Performance: 0.051 ns/day, 470.598 hours/ns, 5.903 timesteps/s, 918.737 katom-step/s
+99.3% CPU use with 128 MPI tasks x 1 OpenMP threads
 
 MPI task timing breakdown:
 Section |  min time  |  avg time  |  max time  |%varavg| %total
 ---------------------------------------------------------------
-Pair    | 6.3883     | 6.5812     | 6.7741     |   7.5 | 73.21
-Neigh   | 0.12049    | 0.12085    | 0.12122    |   0.1 |  1.34
-Comm    | 0.0092565  | 0.20229    | 0.39531    |  42.9 |  2.25
-Output  | 0.00030531 | 0.00042444 | 0.00054356 |   0.0 |  0.00
-Modify  | 2.0833     | 2.0837     | 2.0841     |   0.0 | 23.18
-Other   |            | 0.0004745  |            |       |  0.01
+Pair    | 8.2037     | 9.3305     | 10.232     |  13.5 | 55.08
+Neigh   | 0.17003    | 0.17238    | 0.1991     |   0.8 |  1.02
+Comm    | 0.74964    | 1.6075     | 2.6846     |  32.1 |  9.49
+Output  | 0.0052343  | 0.025479   | 0.068773   |  11.0 |  0.15
+Modify  | 5.7377     | 5.8048     | 5.8892     |   1.9 | 34.26
+Other   |            | 0.0007941  |            |       |  0.00
 
-Nlocal:        1216.00 ave        1216 max        1216 min
-Histogram: 2 0 0 0 0 0 0 0 0 0
-Nghost:        7591.50 ave        7597 max        7586 min
-Histogram: 1 0 0 0 0 0 0 0 0 1
-Neighs:        432912.0 ave      432942 max      432882 min
-Histogram: 1 0 0 0 0 0 0 0 0 1
+Nlocal:           1216 ave        1223 max        1211 min
+Histogram: 14 9 15 18 19 32 10 5 4 2
+Nghost:        7592.34 ave        7607 max        7578 min
+Histogram: 2 5 14 20 25 23 22 10 3 4
+Neighs:         432973 ave      435336 max      431057 min
+Histogram: 4 13 18 18 22 23 15 7 6 2
 
-Total # of neighbors = 865824
-Ave neighs/atom = 356.01316
+Total # of neighbors = 55420529
+Ave neighs/atom = 356.06323
 Neighbor list builds = 5
 Dangerous builds not checked
-Total wall time: 0:00:09
+Total wall time: 0:00:17
 ```
 
 </details>
@@ -148,8 +152,6 @@ $ kubectl get pods
 NAME                  READY   STATUS      RESTARTS   AGE
 flux-sample-0-dl4dm   0/1     Completed   0          5m19s
 flux-sample-1-447xz   0/1     Completed   0          5m19s
-flux-sample-2-8sfb4   0/1     Completed   0          5m19s
-flux-sample-3-q9xqg   0/1     Completed   0          5m19s
 ```
 
 When you are done, clean up.
@@ -181,7 +183,7 @@ You'll then have a full cluster (the resources will match what you are given).
 ```bash
 # flux resource list
      STATE NNODES   NCORES    NGPUS NODELIST
-      free      4       32        0 flux-sample-[0-3]
+      free      2      128        0 flux-sample-[0-1]
  allocated      0        0        0 
       down      0        0        0 
 ```
@@ -189,7 +191,7 @@ You'll then have a full cluster (the resources will match what you are given).
 Then run lammps, this time using flux directly (Note, we need to choose and test a container for AWS).
 
 ```bash
-flux run -N4 -n 32 lmp -v x 2 -v y 2 -v z 2 -in in.reaxff.hns -nocite
+flux run -N2 -n 128 -o cpu-affinity=per-task lmp -v x 8 -v y 8 -v z 8 -in in.reaxff.hns -nocite
 ```
 
 You can also `flux submit` the same. When you are done, exit from the interface and:
@@ -202,13 +204,21 @@ kubectl delete -f minicluster-interactive.yaml
 ### Helm Install
 
 We can also install everything via the helm package manager. This is the same LAMMPS.
-TODO: optimize this for AWS deployment.
 
 ```bash
 # Install the helm chart
-helm install lammps oci://ghcr.io/converged-computing/flux-apps-helm-lammps-reax/chart --version 0.1.0 \
-  --set minicluster.size=4 \
-  --set minicluster.efa=true
+helm install \
+  --set minicluster.efa=1 \
+  --set minicluster.size=2 \
+  --set experiment.nodes=2 \
+  --set experiment.tasks=128 \
+  --set experiment.iterations=3 \
+  --set lammps.x=8 \
+  --set lammps.y=8 \
+  --set lammps.z=8 \
+  --set minicluster.image=ghcr.io/converged-computing/lammps-reax-efa:ubuntu2404-efa \
+  --set flux.image=ghcr.io/converged-computing/flux-view-rocky:arm-9 \
+lammps oci://ghcr.io/converged-computing/flux-apps-helm-lammps-reax/chart --version 0.1.0
 ```
 
 Note that you can also clone this entire repository of apps to install from the command line:
@@ -216,10 +226,32 @@ Note that you can also clone this entire repository of apps to install from the 
 ```bash
 git clone https://github.com/converged-computing/flux-apps-helm
 cd ./flux-apps-helm
-helm show values ./lammps
+helm show values ./lammps-reax
 
-# Put the equivalent --set arguments here
-helm install lammps ./lammps
+helm install \
+  --set minicluster.efa=1 \
+  --set minicluster.size=2 \
+  --set experiment.nodes=2 \
+  --set experiment.tasks=128 \
+  --set experiment.iterations=3 \
+  --set lammps.x=8 \
+  --set lammps.y=8 \
+  --set lammps.z=8 \
+  --set minicluster.image=ghcr.io/converged-computing/lammps-reax-efa:ubuntu2404-efa \
+  --set flux.image=ghcr.io/converged-computing/flux-view-rocky:arm-9 \
+lammps ./lammps-reax
+```
+
+See the experiment output:
+
+```bash
+kubectl logs lammps-0-g2ggm -f
+```
+
+When you are done:
+
+```bash
+helm uninstall lammps
 ```
 
 ## Cleanup
@@ -229,10 +261,3 @@ If you created the cluster:
 ```bash
 eksctl delete cluster --config-file ./eks-config.yaml --wait
 ```
-
-## Original Notes
-
-This is now more of a TODO list.
-
-- [ ] This needs testing on the AWS resources / cluster (we can do hackathon)
-- [ ] Slides should introduce Flux and the Flux Operator

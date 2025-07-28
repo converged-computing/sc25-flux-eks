@@ -27,6 +27,6 @@ docker push ghcr.io/converged-computing/sc25-flux-eks:createsims-arm
 We need to get the output from `/workdir/out` in the build above and move into the cganalysis/data directory for this build.
 
 ```bash
-docker build --network host -f ./cganalysis/Dockerfile -t ghcr.io/converged-computing/sc25-flux-eks:cganalysis-arm ./createsims
+docker build --network host -f ./cganalysis/Dockerfile -t ghcr.io/converged-computing/sc25-flux-eks:cganalysis-arm ./cganalysis
 docker push ghcr.io/converged-computing/sc25-flux-eks:cganalysis-arm
 ```

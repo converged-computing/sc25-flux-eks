@@ -21,7 +21,7 @@ ws=/opt/clones/mummi-ras/mlserver
 mldir=/opt/clones/mummi-ras/mlserver
 resources="martini3-validator"
 complex="ras-rbdcrd-ref-CG.gro"
-cmd="mummi-ml start --jobid structure_000001 --workspace=${ws} --outdir=${outpath} --tag mlrunner --plain-http --encoder-model ${model} --ml-outdir=${mldir} --feedback --resources ${resources} --complex=${complex}"
+cmd="mummi-ml start --jobid structure_000001 --workspace=${ws} --outdir=${outpath} --tag mlrunner --plain-http --encoder-model ${model} --ml-outdir=${mldir} --resources ${resources} --complex=${complex}"
 
 mkdir -p /opt/clones/extract
 cd /opt/clones/extract
@@ -39,17 +39,10 @@ python $MUMMI_APP/mummi_ras/scripts/create_organization.py
 
 # Trajectory feedback files
 here=$(pwd)
-feedback=/opt/clones/mummi-ras/feedback-cg2ml
-mkdir -p ${feedback}
 
-# We won't have feedback for a single run
-# These are named by date, but we are just getting all of them.
-# for tag in $(oras repo tags --plain-http $registry/cganalysis)
-#  do
-#    mkdir -p ${feedback}/${tag}
-#    cd ${feedback}/${tag}
-#    oras pull --plain-http $registry/cganalysis:$tag
-# done
 cd $here
 echo "$cmd"
 $cmd
+
+echo "mlrunner output:"
+tree /workdir/tmp/

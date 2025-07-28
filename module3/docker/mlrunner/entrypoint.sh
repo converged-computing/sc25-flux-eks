@@ -25,7 +25,7 @@ cmd="mummi-ml start --jobid structure_000001 --workspace=${ws} --outdir=${outpat
 
 mkdir -p /opt/clones/extract
 cd /opt/clones/extract
-tar -xzvf /opt/clones/model.tar.gz
+tar --touch -xzvf /opt/clones/model.tar.gz
 extracted=$(ls /opt/clones/extract)
 cd -
 mv /opt/clones/extract/${extracted} /opt/clones/mummi_resources/ml/chonky-model
@@ -33,6 +33,7 @@ mv /opt/clones/extract/${extracted} /opt/clones/mummi_resources/ml/chonky-model
 # nproc is OK to run on an arm instance - will return physical cores
 NUM_THREADS=$(nproc)
 export OMP_NUM_THREADS=$NUM_THREADS
+echo "Running with ${NUM_THREADS} cpu"
 export KERAS_BACKEND='theano'
 umask 007
 python $MUMMI_APP/mummi_ras/scripts/create_organization.py

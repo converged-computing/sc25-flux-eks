@@ -1,0 +1,22 @@
+apiVersion: eksctl.io/v1alpha5
+kind: ClusterConfig
+
+metadata:
+  name: lammps-cluster
+  region: us-east-1
+  version: "1.31"
+
+availabilityZones: ["us-east-1a", "us-east-1c"]
+managedNodeGroups:
+  - name: workers
+    availabilityZones: ["us-east-1a"]
+    instanceType: hpc7g.16xlarge
+    # Defaults to 80, this in GB. 80 is too small to support installing EFA
+    placement:
+      groupName: eks-efa-testing
+    volumeSize: 200
+    # This will default to gp3 and you'll wait 30+ minutes and it will fail
+    volumeType: gp2
+    minSize: 2
+    maxSize: 2
+    efaEnabled: true

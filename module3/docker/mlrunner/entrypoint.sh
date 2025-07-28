@@ -5,6 +5,12 @@ set -euo pipefail
 mummi_mlserver_nnodes=1
 MUMMI_APP=/opt/clones/mummi-ras
 
+# Prepare output directory
+outdir=/workdir
+outpath=/workdir/tmp
+mkdir -p $outpath
+cd $outdir
+
 export MUMMI_ROOT=$MUMMI_APP
 export MUMMI_RESOURCES=/opt/clones/mummi_resources
 export MUMMI_APP
@@ -15,7 +21,7 @@ ws=/opt/clones/mummi-ras/mlserver
 mldir=/opt/clones/mummi-ras/mlserver
 resources="martini3-validator"
 complex="ras-rbdcrd-ref-CG.gro"
-cmd="mummi-ml start --jobid {{jobid}} --workspace=${ws} --outdir=${outpath} --tag mlrunner --device gpu --plain-http --registry=${registry} --encoder-model ${model} --ml-outdir=${mldir} --feedback --resources ${resources} --complex=${complex}"
+cmd="mummi-ml start --jobid structure_000001 --workspace=${ws} --outdir=${outpath} --tag mlrunner --plain-http --encoder-model ${model} --ml-outdir=${mldir} --feedback --resources ${resources} --complex=${complex}"
 
 mkdir -p /opt/clones/extract
 cd /opt/clones/extract

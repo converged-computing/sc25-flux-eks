@@ -4,7 +4,7 @@ metadata:
   name: mlrunner
 spec:
   size: 1
-  # Setting tasks to 0 uses what is found on the node.
+  # Setting tasks to 0 uses what is found on the node (avoiding the flux default of 1)
   tasks: 0
   logging:
     quiet: true

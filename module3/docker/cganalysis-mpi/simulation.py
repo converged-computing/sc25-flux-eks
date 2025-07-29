@@ -44,6 +44,7 @@ def is_running(flux_future):
     """
     return job_info(flux_future).returncode == ""
 
+
 def is_successed(flux_future):
     """
     Simple function to determine if job is running.
@@ -89,7 +90,9 @@ def submit_flux_job(command, num_tasks=1, num_nodes=1, cwd=None):
     jobspec.environment = dict(os.environ)
     jobspec.stdout = os.path.join(cwd, "cganalysis.log")
     flux_future = flux.job.submit_async(handle, jobspec)
-    print(f"cganalysis job successfully submitted with ID: {flux_future.get_id()}")
+    print(
+        f"cganalysis job successfully submitted on {num_nodes} nodes with {num_tasks} tasks with ID: {flux_future.get_id()}"
+    )
     return flux_future
 
 

@@ -30,3 +30,12 @@ We need to get the output from `/workdir/out` in the build above and move into t
 docker build --network host -f ./cganalysis/Dockerfile -t ghcr.io/converged-computing/sc25-flux-eks:cganalysis-arm ./cganalysis
 docker push ghcr.io/converged-computing/sc25-flux-eks:cganalysis-arm
 ```
+
+## Cganalysis-mpi
+
+Ditto for data. This build adds an MPI enabled gmx.
+
+```bash
+docker build --network host -f ./cganalysis-mpi/Dockerfile -t ghcr.io/converged-computing/sc25-flux-eks:cganalysis-mpi-arm ./cganalysis-mpi
+docker push ghcr.io/converged-computing/sc25-flux-eks:cganalysis-mpi-arm
+```

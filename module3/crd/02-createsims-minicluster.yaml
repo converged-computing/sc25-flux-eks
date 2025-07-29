@@ -1,7 +1,7 @@
 apiVersion: flux-framework.org/v1alpha2
 kind: MiniCluster
 metadata:
-  name: mlrunner
+  name: createsims
 spec:
   size: 1
   # Setting tasks to 0 uses what is found on the node.

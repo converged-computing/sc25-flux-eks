@@ -44,6 +44,12 @@ def is_running(flux_future):
     """
     return job_info(flux_future).returncode == ""
 
+def is_successed(flux_future):
+    """
+    Simple function to determine if job is running.
+    """
+    return job_info(flux_future).returncode in [0, "0"]
+
 
 def stream_job_output(flux_future):
     """
@@ -52,7 +58,7 @@ def stream_job_output(flux_future):
     try:
         for line in flux.job.event_watch(handle, flux_future.get_id(), "guest.output"):
             if "data" in line.context:
-                print(line.context["data"])
+                yield line.context["data"]
     except Exception:
         pass
 
@@ -66,7 +72,7 @@ def job_info(flux_future):
     return rpc.get_jobinfo()
 
 
-def submit_flux_job(command, num_tasks=1, num_nodes=1, cores_per_task=1, cwd=None):
+def submit_flux_job(command, num_tasks=1, num_nodes=1, cwd=None):
     """
     Submit a Flux job. This should throw up if it fails.
     """
@@ -75,7 +81,6 @@ def submit_flux_job(command, num_tasks=1, num_nodes=1, cores_per_task=1, cwd=Non
         command=command,
         num_tasks=num_tasks,
         num_nodes=num_nodes,
-        cores_per_task=cores_per_task,
     )
 
     # You can customize the job specification further
@@ -109,7 +114,7 @@ class Simulation(ABC):
         self.cg = cg  # CGParser object that contains MDA universe
 
         # Lazy way to set nodes :)
-        self.nodes = int(os.environ.get("CGANLAYSIS_NODES", "1") or "1")
+        self.nodes = int(os.environ.get("CG_NODES", "1") or "1")
 
         # Pathing for inputs and outputs
         self.sim_dir = os.path.abspath(out_dir)  # Path for simulation run
@@ -183,7 +188,10 @@ class Simulation(ABC):
 
         # Defaults to one core per task.
         self._future = submit_flux_job(
-            command, num_tasks=self.ncores, num_nodes=self.nodes, cwd=self.sim_dir
+            command,
+            num_tasks=self.ncores * self.nodes,
+            num_nodes=self.nodes,
+            cwd=self.sim_dir,
         )
 
         sleep(5)
@@ -205,6 +213,10 @@ class Simulation(ABC):
         if self._future is not None:
             # We could also send a signal, but this should work
             flux.job.cancel(handle, self._future.get_id(), "cganalysis stop request")
+            with open(os.path.join(self.sim_dir, "mdrun.log"), "w") as fd:
+                for line in stream_job_output(self._future):
+                    print(line)
+                    fd.write(line)
 
     @property
     def running(self):
@@ -212,9 +224,13 @@ class Simulation(ABC):
 
     @property
     def successful(self):
-        # TODO: Come back to this and implement a more flexible success
-        # check.
-        pass
+        print("Checking for job success...")
+        # Write log here as a hack
+        if self._future is not None:
+            with open(os.path.join(self.sim_dir, "mdrun.log"), "w") as fd:
+                for line in stream_job_output(self._future):
+                    print(line)
+                    fd.write(line)
 
     def check(self):
         if self._future is not None and is_running(self._future):

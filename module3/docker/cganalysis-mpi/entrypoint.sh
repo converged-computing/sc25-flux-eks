@@ -15,8 +15,12 @@ export OMP_NUM_THREADS=64
 
 simname=${jobid}
 locpath=/tmp/workdir
-mv /tmp/out ${locpath}
-mkdir -p ${outpath}; cd ${locpath} 
+
+# We don't have a shared filesystem so all nodes need to see the same view
+flux exec -r all cp -R /tmp/out /tmp/workdir
+flux exec -r all mkdir -p /workdir/out
+
+cd ${locpath} 
 ls
 cframe=0
 touch /tmp/workdir/cg_analysis.out
@@ -28,7 +32,6 @@ mummi_cganalysis \
     --siminputs $outpath \
     --fstype mummi \
     --fbio mummi \
-    # This is MPI enabled gromacs
     --simbin gmx_mpi \
     --backend GROMACS \
     --simcores ${OMP_NUM_THREADS} \

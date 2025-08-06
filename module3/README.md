@@ -1,5 +1,7 @@
 # Module 3: Complex Workflow Implementation
 
+In this tutorial we will interact with components of the complex, heteregeous workflow MuMMI. We will first run individual components and observe output with Flux, and then we will run a sequence of the jobs as state machines for full orchestration.
+
 ## Setup
 
 If you are creating the cluster:
@@ -3007,7 +3009,152 @@ cganalysis output:
 
 Createsims runs for approximately 10 minutes, however it depends on the simulation data you get from the mlrunner. Cganalysis for our study we capped to 30 minutes, and the build here is capped to approximately 6 minutes. You can use `kubectl logs <pod>` to equivalently see the output, which will include timings.
 
+### 2. MuMMI as a State Machine
+
+Let's install the state machine operator.
+
+```bash
+kubectl apply -f ./crd/state-machine-operator-arm.yaml
+```
+
+You can check that it is running:
+
+```bash
+manager=$(kubectl get pods -l control-plane=controller-manager -n state-machine-operator-system -o json | jq -r .items[0].metadata.name)
+echo "Manager pod is $manager"
+kubectl logs -n state-machine-operator-system ${manager}
+```
+
+Let's now run a state machine. We will ask for two completions, so you will see two jobs run in parallel. If we launched more jobs, they would be submit as space opened up after workflow completions.
+
+```bash
+kubectl apply -f crd/mummi-state-machine.yaml
+```
+
+You can look at the logs of the manager to see the state machines starting! There is also a local cluster registry created for movement of assets between steps.
+
+```bash
+$ kubectl logs mummi-manager-7c74786dfc-gm5vb -f
+```
+```bash
+state-machine-manager start /opt/jobs/state-machine-workflow.yaml --config-dir=/opt/jobs --quiet --scheduler kubernetes --registry registry-0.mummi.default.svc.cluster.local:5000 --plain-http
+INFO:state_machine_operator.manager.manager: Job Prefix: [structure_]
+INFO:state_machine_operator.manager.manager:  Scheduler: [kubernetes]
+INFO:state_machine_operator.manager.manager:   Registry: [registry-0.mummi.default.svc.cluster.local:5000]
+INFO:state_machine_operator.manager.manager:Manager running with 0 job sequence completions.
+INFO:state_machine_operator.manager.manager:Job structure_095903124 is active and not completed
+INFO:state_machine_operator.manager.manager:Job structure_024629538 is active and not completed
+```
+
+And the matching jobs. First is the `mlrunner`. This step downloads a model, and generates initial data for subsequent steps. You will also notice we have two state machines running in parallel. If you look at the custom resource definition that created it, we allow a maximum cluster size of 2 (the number of nodes we have) and ask for 2 completions to indicate success.
+
+```bash
+$ kubectl get pods
+NAME                                 READY   STATUS              RESTARTS   AGE
+mlrunner-structure-024629538-7khvm   0/1     ContainerCreating   0          12s
+mlrunner-structure-095903124-xzb4l   0/1     ContainerCreating   0          12s
+mummi-manager-7c74786dfc-gm5vb       1/1     Running             0          23s
+registry-0                           1/1     Running             0          23s
+```
+
+After the mlrunner finishes (it runs in under a minute after pulling) you will see the next step, `createsims` creating.
+
+```bash
+$ kubectl get pods
+NAME                                  READY   STATUS              RESTARTS   AGE
+createsim-structure-016002190-2vf4c   0/1     ContainerCreating   0          22s
+createsim-structure-065403077-m29pm   0/1     ContainerCreating   0          22s
+mlrunner-structure-016002190-fgf9r    0/1     Completed           0          54s
+mlrunner-structure-065403077-9x5rb    0/1     Completed           0          54s
+mummi-manager-7c74786dfc-8qkw6        1/1     Running             0          55s
+registry-0                            1/1     Running             0          55s
+```
+
+If you look at the `createsims` logs you will see excellent Gromacs wisdom! This run completes in approximately 600 seconds, but it depends on the same generated. Some samples can actually timeout and will fail and a new `mlrunner` will spawn. Finally, when `createsims` is done, we kick off the last step, `cganalysis`:
+
+```bash
+$ kubectl get pods
+NAME                                   READY   STATUS      RESTARTS   AGE
+cganalysis-structure-014136073-lgnlt   1/1     Running     0          52s
+cganalysis-structure-036872627-d7xqc   1/1     Running     0          119s
+createsim-structure-014136073-nhpsk    0/1     Completed   0          11m
+createsim-structure-036872627-kvmq2    0/1     Completed   0          11m
+mlrunner-structure-014136073-ndds8     0/1     Completed   0          12m
+mlrunner-structure-036872627-9vgn8     0/1     Completed   0          12m
+mummi-manager-7c74786dfc-tf5ng         1/1     Running     0          12m
+registry-0                             1/1     Running     0          12m
+```
+
+This can go up to 12 hours on HPC, but we have a small demo that will stop in about 6 minutes. You can also look at the logs to see metadata and timings. When everything completes:
+
+```bash
+$ kubectl get pods
+NAME                                   READY   STATUS      RESTARTS   AGE
+cganalysis-structure-014136073-lgnlt   0/1     Completed   0          6m46s
+cganalysis-structure-036872627-d7xqc   0/1     Completed   0          7m53s
+createsim-structure-014136073-nhpsk    0/1     Completed   0          17m
+createsim-structure-036872627-kvmq2    0/1     Completed   0          17m
+mlrunner-structure-014136073-ndds8     0/1     Completed   0          18m
+mlrunner-structure-036872627-9vgn8     0/1     Completed   0          18m
+mummi-manager-7c74786dfc-tf5ng         1/1     Running     0          18m
+registry-0                             1/1     Running     0          18m
+```
+
+You can look at the manager to see final metadata, streaming ML models, and timings. The state machine operator also can save instance create and deletion times if you have an autoscaling cluster.
+
+```bash
+=== nodes
+{"ip-192-168-25-34.ec2.internal": {"created": 1754451730.0, "labels": {"alpha.eksctl.io/cluster-name": "lammps-cluster", "alpha.eksctl.io/nodegroup-name": "workers", "beta.kubernetes.io/arch": "arm64", "beta.kubernetes.io/instance-type": "hpc7g.16xlarge", "beta.kubernetes.io/os": "linux", "eks.amazonaws.com/capacityType": "ON_DEMAND", "eks.amazonaws.com/nodegroup": "workers", "eks.amazonaws.com/nodegroup-image": "ami-0eb1476e3c5c10683", "eks.amazonaws.com/sourceLaunchTemplateId": "lt-077241f0aaf57a068", "eks.amazonaws.com/sourceLaunchTemplateVersion": "1", "failure-domain.beta.kubernetes.io/region": "us-east-1", "failure-domain.beta.kubernetes.io/zone": "us-east-1a", "k8s.io/cloud-provider-aws": "9e89d3778ab6125674706484a56975b1", "kubernetes.io/arch": "arm64", "kubernetes.io/hostname": "ip-192-168-25-34.ec2.internal", "kubernetes.io/os": "linux", "node.kubernetes.io/instance-type": "hpc7g.16xlarge", "topology.k8s.aws/network-node-layer-1": "nn-12b685cf936f17170", "topology.k8s.aws/network-node-layer-2": "nn-2b371c39e62790f68", "topology.k8s.aws/network-node-layer-3": "nn-b99ff9cfc8fdb441f", "topology.k8s.aws/zone-id": "use1-az6", "topology.kubernetes.io/region": "us-east-1", "topology.kubernetes.io/zone": "us-east-1a"}, "conditions": [{"last_transition_time": 1754451740.0, "message": "kubelet is posting ready status", "reason": "KubeletReady", "status": true, "type": "Ready", "recorded_at": 1754456923.2733717}], "is_ready": true}, "ip-192-168-3-56.ec2.internal": {"created": 1754451745.0, "labels": {"alpha.eksctl.io/cluster-name": "lammps-cluster", "alpha.eksctl.io/nodegroup-name": "workers", "beta.kubernetes.io/arch": "arm64", "beta.kubernetes.io/instance-type": "hpc7g.16xlarge", "beta.kubernetes.io/os": "linux", "eks.amazonaws.com/capacityType": "ON_DEMAND", "eks.amazonaws.com/nodegroup": "workers", "eks.amazonaws.com/nodegroup-image": "ami-0eb1476e3c5c10683", "eks.amazonaws.com/sourceLaunchTemplateId": "lt-077241f0aaf57a068", "eks.amazonaws.com/sourceLaunchTemplateVersion": "1", "failure-domain.beta.kubernetes.io/region": "us-east-1", "failure-domain.beta.kubernetes.io/zone": "us-east-1a", "k8s.io/cloud-provider-aws": "9e89d3778ab6125674706484a56975b1", "kubernetes.io/arch": "arm64", "kubernetes.io/hostname": "ip-192-168-3-56.ec2.internal", "kubernetes.io/os": "linux", "node.kubernetes.io/instance-type": "hpc7g.16xlarge", "topology.k8s.aws/network-node-layer-1": "nn-12b685cf936f17170", "topology.k8s.aws/network-node-layer-2": "nn-2b371c39e62790f68", "topology.k8s.aws/network-node-layer-3": "nn-b99ff9cfc8fdb441f", "topology.k8s.aws/zone-id": "use1-az6", "topology.kubernetes.io/region": "us-east-1", "topology.kubernetes.io/zone": "us-east-1a"}, "conditions": [{"last_transition_time": 1754451754.0, "message": "kubelet is posting ready status", "reason": "KubeletReady", "status": true, "type": "Ready", "recorded_at": 1754456923.273477}], "is_ready": true}}
+===
+=== times
+{"times": {"list_jobs_by_status": [0.012, 0.01, 0.014, 0.022, 0.039, 0.015, 0.03, 0.015, 0.015, 0.017, 0.016, 0.017, 0.016, 0.018, 0.082, 0.098, 0.016, 0.018, 0.017, 0.02, 0.029, 0.097, 0.016, 0.026, 0.059, 0.018, 0.021, 0.019, 0.017, 0.031, 0.1, 0.02, 0.021, 0.026, 0.024, 0.02]}, "timestamps": {"workflow_start": 1754456923.1331263, "structure_014136073_mlrunner_start": 1754456923.2627776, "structure_036872627_mlrunner_start": 1754456923.2641563, "structure_036872627_mlrunner_succeeded": 1754456981.480425, "structure_014136073_mlrunner_succeeded": 1754456981.6117964, "structure_036872627_createsim_start": 1754456981.711507, "structure_014136073_createsim_start": 1754456981.8140152, "structure_036872627_createsim_succeeded": 1754457554.3247514, "structure_036872627_cganalysis_start": 1754457554.4434745, "structure_014136073_createsim_succeeded": 1754457620.933126, "structure_014136073_cganalysis_start": 1754457621.2353003, "structure_036872627_cganalysis_succeeded": 1754457918.9469495, "structure_014136073_cganalysis_succeeded": 1754457986.4417143, "workflow_complete": 1754457986.4618757}}
+===
+🌊 Streaming ML Model Summary: {"variance": {"mlrunner": {"duration": 0.0}, "createsim": {"duration": 2178.0}, "cganalysis": {"duration": 0.5}}, "mean": {"mlrunner": {"duration": 58.0}, "createsim": {"duration": 606.0}, "cganalysis": {"duration": 364.5}}, "iqr": {"mlrunner": {"duration": 0.0}, "createsim": {"duration": 66.0}, "cganalysis": {"duration": 1.0}}, "max": {"mlrunner": {"duration": 58.0}, "createsim": {"duration": 639.0}, "cganalysis": {"duration": 365.0}}, "min": {"mlrunner": {"duration": 58.0}, "createsim": {"duration": 573.0}, "cganalysis": {"duration": 364.0}}, "mad": {"mlrunner": {"duration": 0.0}, "createsim": {"duration": 0.0}, "cganalysis": {"duration": 0.0}}, "count": {"mlrunner": {"success": 2}, "createsim": {"success": 2}, "cganalysis": {"success": 2}}}
+Workflow is complete. You can delete the deployment to clean up.
+```
+
+How would we get the output? All of the artifacts are stored in a registry in the cluster. We would install [oras](https://oras.land), and then just need to port forward in a terminal and pull.
+
+```bash
+kubectl port-forward registry-0 5000:5000
+# In another terminal
+oras repo ls localhost:5000
+
+mkdir -p data/
+cd ./data/
+# Download artifacts organized by structure (repo) and step (tag)
+registry=localhost:5000
+# registry=registry-0.mummi-sample.default.svc.cluster.local:5000
+root=$(pwd)
+for repo in $(oras repo list --plain-http $registry) 
+  do 
+    for tag in $(oras repo tags --plain-http $registry/$repo)
+      do 
+        mkdir -p $root/$repo/$tag
+        cd $root/$repo/$tag
+        oras pull --plain-http $registry/$repo:$tag
+    done
+done
+```
+
+When you are done:
+
+```bash
+kubectl delete -f ./crd/mummi-state-machine.yaml
+```
+
+## Cleanup
+
+If you created the cluster:
+
+```bash
+eksctl delete cluster --config-file ./eks-config.yaml --wait
+```
+
 ### Hackathon TODO
 
+- We will want to test this a few times to ensure when something fails it restarts, etc.
 - Add output file to running job / debug how to call at end with streaming output.
-
+- Likely the TPR with multiple nodes is corrupt - is that OK?
+- Discuss how we want to assemble the state machine (and V will finish)
+- We will need to use some aws cache strategy to get images to pull quickly (ask Lowell)

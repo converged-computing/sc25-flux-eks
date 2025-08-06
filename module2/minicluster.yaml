@@ -16,6 +16,7 @@ spec:
   # You aren't required to use a view for Flux 
   # You can also install to your application container
   flux:
+    optionFlags: -o cpu-affinity=per-task
     container: 
       image: ghcr.io/converged-computing/flux-view-rocky:arm-9
       
@@ -26,7 +27,7 @@ spec:
 
      # You can set the working directory if your container WORKDIR is not correct.
      workingDir: /opt/lammps/examples/reaxff/HNS
-     command: lmp -v x 8 -v y 8 -v z 8 -o cpu-affinity=per-task -in in.reaxff.hns -nocite
+     command: lmp -v x 2 -v y 2 -v z 2 -in in.reaxff.hns -nocite
 
      # This is more expert optimization to ensure /dev/shm does not limit efa
      volumes:

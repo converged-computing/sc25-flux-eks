@@ -6,6 +6,7 @@ spec:
   manager:
     interactive: false
     image: ghcr.io/converged-computing/state-machine-operator:manager-arm
+    pullPolicy: Always
 
   workflow:
     completed: 2

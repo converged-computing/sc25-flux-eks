@@ -324,11 +324,17 @@ kubectl delete -f ./crd/01-mlrunner-minicluster.yaml
 
 #### Simulation Steps
 
-The next two steps, `createsims` and `cganalysis`, take longer (and may not be appropriate to run during this tutorial) but can can do as follows:
+The next two steps, `createsims` and `cganalysis`, take longer (and may not be appropriate to run during this tutorial) but can can do as follows. You can create these *both* at the same time:
 
 ```bash
 kubectl apply -f ./crd/02-createsims-minicluster.yaml 
 kubectl apply -f ./crd/03-cganalysis-minicluster.yaml
+```
+
+Once both are running, you can look at output and shell into the container to look around! Let's go into the `createsims` container:
+
+```bash
+kubectl exec -it createsims-0-l6hts -- bash
 ```
 
 <details>

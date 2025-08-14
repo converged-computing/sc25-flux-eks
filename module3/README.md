@@ -3156,11 +3156,3 @@ If you created the cluster:
 ```bash
 eksctl delete cluster --config-file ./eks-config.yaml --wait
 ```
-
-### Hackathon TODO
-
-- We will want to test this a few times to ensure when something fails it restarts, etc.
-- Add output file to running job / debug how to call at end with streaming output.
-- Likely the TPR with multiple nodes is corrupt - is that OK?
-- Discuss how we want to assemble the state machine (and V will finish)
-- We will need to use some aws cache strategy to get images to pull quickly (ask Lowell)

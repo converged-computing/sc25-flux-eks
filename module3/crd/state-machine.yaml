@@ -3,8 +3,6 @@ kind: StateMachine
 metadata:
   name: state-machine
 spec:
-  manager:
-    pullPolicy: Never
   workflow:
     completed: 4
   cluster:
